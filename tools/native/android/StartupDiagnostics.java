@@ -96,7 +96,7 @@ public final class StartupDiagnostics extends Application {
             failure += "\n" + p.getString("java_failure", "");
         android.content.SharedPreferences.Editor edit = p.edit().putLong("session", System.currentTimeMillis())
             .remove("active_driver").remove("native_stage").remove("native_history").remove("runtime_vulkan").remove("vulkan_candidates")
-            .remove("capture_active").remove("capture_next_run");
+            .remove("capture_next_run");
         if (!failure.isEmpty()) edit.putString("failure", failure).putBoolean("pending", true);
         edit.commit();
         Thread.UncaughtExceptionHandler previousHandler = Thread.getDefaultUncaughtExceptionHandler();
