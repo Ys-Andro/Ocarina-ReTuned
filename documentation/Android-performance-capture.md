@@ -40,6 +40,15 @@ capture request, so a failed attempt does not silently enable profiling forever.
 - **GPU frame p50/p95 and native PICA GPU pass timings** come from Vulkan
   timestamp queries. Some drivers or paths may not expose usable timestamps;
   missing measurements are reported as unavailable, never as zero.
+- When the renderer provides them, the report also shows independent p50/p95
+  timings for toon raster, grass, ambient occlusion, depth preparation,
+  reflection, global illumination, motion vectors, scene composition,
+  anti-aliasing, upscaling, display transfer, scanout and overlay. These pass
+  measurements can overlap or be nested, so do not add them together.
+- The Vulkan adapter vendor/device IDs and NRI pipeline creation count, attempt
+  count, initial cache size and accumulated creation time are included when
+  present. IDs identify the selected adapter but do not alone establish driver
+  quality or compatibility.
 - These host timings do not prove that guest simulation is running at the same
   rate, nor do they directly measure GPU execution time.
 
