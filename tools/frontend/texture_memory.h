@@ -63,8 +63,9 @@ uint64_t TrimTextureCache(Map& cache, uint64_t budget, Cost cost, Age age,
 
 // Trim both decoded caches against one shared budget. The first cache has a
 // soft half-budget target; unused capacity is available to the second cache.
-// Protected entries may keep the first cache over budget, in which case the
-// second cache is reduced to zero rather than exceeding the shared allowance.
+// Protected entries may keep either cache above its target. The second cache
+// receives a zero target when the first cache is already over budget, but its
+// own protected entries can still keep actual retained bytes above the limit.
 template<class FirstMap, class SecondMap, class FirstCost, class SecondCost,
          class Age, class Eligible, class Retire>
 std::pair<uint64_t, uint64_t> TrimSharedTextureCaches(
