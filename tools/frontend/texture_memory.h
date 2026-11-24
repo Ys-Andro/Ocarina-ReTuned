@@ -6,6 +6,7 @@
 #include <limits>
 #include <algorithm>
 #include <mutex>
+#include <utility>
 #include <vector>
 #include "texture_memory_platform.h"
 
@@ -58,6 +59,22 @@ uint64_t TrimTextureCache(Map& cache, uint64_t budget, Cost cost, Age age,
         cache.erase(oldest);
     }
     return bytes;
+}
+
+// Trim both decoded caches against one shared budget. The first cache has a
+// soft half-budget target; unused capacity is available to the second cache.
+// Protected entries may keep the first cache over budget, in which case the
+// second cache is reduced to zero rather than exceeding the shared allowance.
+template<class FirstMap, class SecondMap, class FirstCost, class SecondCost,
+         class Age, class Eligible, class Retire>
+std::pair<uint64_t, uint64_t> TrimSharedTextureCaches(
+    FirstMap& first, SecondMap& second, uint64_t budget,
+    FirstCost firstCost, SecondCost secondCost,
+    Age age, Eligible eligible, Retire retire) {
+    const auto firstBytes = TrimTextureCache(first, budget / 2, firstCost, age, eligible, retire);
+    const auto secondBudget = RemainingDecodedTextureBudget(budget, firstBytes);
+    const auto secondBytes = TrimTextureCache(second, secondBudget, secondCost, age, eligible, retire);
+    return {firstBytes, secondBytes};
 }
 
 inline bool FitsTextureBudget(uint64_t used, uint64_t requested, uint64_t budget) {
