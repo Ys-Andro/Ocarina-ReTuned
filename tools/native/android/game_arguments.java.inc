@@ -8,6 +8,10 @@
         File vulkanTrace = new File(directory, "vulkan-frame-trace.json");
         if (vulkanTrace.exists() && !vulkanTrace.delete())
             throw new java.io.IOException("Cannot clear previous Vulkan frame trace");
+        android.system.Os.setenv("TRIAEVUM_PACING_TRACE", "1", true);
+        android.system.Os.setenv("OOT3D_VULKAN_DIAGNOSTICS_PATH", vulkanTrace.getAbsolutePath(), true);
+        android.system.Os.setenv("OOT3D_VULKAN_DIAGNOSTICS_MAX_FRAMES", "240", true);
+        android.system.Os.setenv("OOT3D_VULKAN_DIAGNOSTICS_FLUSH_INTERVAL", "0", true);
         JSONObject profile = new JSONObject(new String(Files.readAllBytes(source.toPath()), StandardCharsets.UTF_8));
         org.json.JSONArray original = profile.getJSONArray("arguments");
         org.json.JSONArray arguments = new org.json.JSONArray();
@@ -32,14 +36,14 @@
     @Override protected String[] getArguments() {
         File profile = new File(getExternalFilesDir(null), "native-launch.json");
         File selectedProfile = profile;
-        if (StartupDiagnostics.prefs(this).getBoolean("capture_active", false)) {
+        if (StartupDiagnostics.prefs(this).getBoolean("capture_next_run", false)) {
             try {
                 selectedProfile = retunedPerformanceProfile(profile);
             } catch (Exception error) {
-                StartupDiagnostics.prefs(this).edit().putBoolean("capture_active", false).commit();
+                StartupDiagnostics.prefs(this).edit().putBoolean("capture_next_run", false).commit();
                 Log.w("ReTunedSetup", "Performance capture profile unavailable", error);
             }
-            StartupDiagnostics.prefs(this).edit().putBoolean("capture_active", false).commit();
+            StartupDiagnostics.prefs(this).edit().putBoolean("capture_next_run", false).commit();
         }
         try {
             org.json.JSONArray arguments = new JSONObject(new String(Files.readAllBytes(selectedProfile.toPath()), StandardCharsets.UTF_8)).getJSONArray("arguments");
