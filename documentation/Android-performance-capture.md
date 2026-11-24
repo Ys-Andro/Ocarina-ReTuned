@@ -34,6 +34,10 @@ capture request, so a failed attempt does not silently enable profiling forever.
   frame-time budgets.
 - **Pre-backend work per measured frame** is a CPU/host-side timing scope
   reported as mean, p95 and maximum milliseconds. It is not a GPU measurement.
+- **Native PICA CPU phase timings**, when present, report p50/p95 for total
+  native PICA CPU work and selected shader, texture, draw-state, pipeline,
+  upload, descriptor and command-recording phases. These help distinguish CPU
+  submission/preparation costs from GPU execution.
 - **Retained slow-frame phase samples** expose the individual host/renderer
   phases for frames that the runtime selected as slow. Some phases are nested
   or overlap, so do not add them as if they were independent costs.
