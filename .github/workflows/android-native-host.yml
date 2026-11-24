@@ -31,6 +31,12 @@ jobs:
           ref: 17218b0cfdb944645bb5cde5249f313dca7e53ce
           path: engine
           persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: libsdl-org/SDL
+          ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
+          path: sdl
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
@@ -38,7 +44,7 @@ jobs:
         id: native_cache
         with:
           path: .compiler-cache-android
-          key: native-android-arm64-v1-${{ github.sha }}
+          key: native-android-arm64-v2-${{ github.sha }}
           restore-keys: native-android-arm64-v1-
       - name: Install build tools
         run: |
@@ -46,6 +52,15 @@ jobs:
           sudo apt-get install -y ccache nlohmann-json3-dev
           python -m pip install 'cmake==3.31.6' ninja
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'ndk;29.0.14206865'
+      - name: Build SDL2 Android shared library
+        run: |
+          cmake -S sdl -B build/sdl2 -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/29.0.14206865/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-29 \
+            -DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_TEST=OFF -DSDL_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/sdl2 --parallel 3
+          test -s build/sdl2/libSDL2.so
       - name: Apply Android port fixes
         run: |
           python tools/native/apply_android_port.py engine
