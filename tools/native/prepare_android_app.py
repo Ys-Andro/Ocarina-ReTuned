@@ -235,7 +235,7 @@ tasks.named("preBuild") { dependsOn("stampPreparationIdentity") }
             '    @Override public void loadLibraries() {')
     if 'GraphicsDriver.load(this' not in text:
         text = text.replace('    @Override public void loadLibraries() {',
-            '    @Override public void loadLibraries() {\n        try { GraphicsDriver.load(this,GraphicsDriver.read(this)); android.system.Os.setenv("SDL_VULKAN_LIBRARY",getApplicationInfo().nativeLibraryDir+"/libretuned_vulkan.so",true); }\n        catch(Exception | LinkageError error){StartupDiagnostics.failure(this,error);throw new IllegalStateException("Graphics driver initialization failed",error);}')
+            '    @Override public void loadLibraries() {\n        if(StartupDiagnostics.prefs(this).getBoolean("capture_next_run",false)){StartupDiagnostics.prefs(this).edit().putBoolean("capture_next_run",false).putBoolean("capture_active",true).commit();try{android.system.Os.setenv("TRIAEVUM_PACING_TRACE","1",true);}catch(Exception error){StartupDiagnostics.failure(this,error);}}\n        try { GraphicsDriver.load(this,GraphicsDriver.read(this)); android.system.Os.setenv("SDL_VULKAN_LIBRARY",getApplicationInfo().nativeLibraryDir+"/libretuned_vulkan.so",true); }\n        catch(Exception | LinkageError error){StartupDiagnostics.failure(this,error);throw new IllegalStateException("Graphics driver initialization failed",error);}')
     gameplay.write_text(text)
     activity.write_text('package org.triaevum.android;\n/** Stable launcher component preserves existing home-screen shortcuts. */\npublic final class TriAevumActivity extends RomSetupActivity {}\n')
     asset = root/'app/src/main/assets/retuned'
