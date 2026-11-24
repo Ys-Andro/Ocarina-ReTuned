@@ -6,8 +6,7 @@
 struct Entry { uint64_t bytes, last; bool pinned; };
 int main() {
     using namespace RetunedFrontend;
-    // Both decoded caches share one platform budget. The replacement cache
-    // receives only what remains after material textures have been retained.
+    // Both decoded caches share one platform budget.
     assert(RemainingDecodedTextureBudget(100, 40) == 60);
     assert(RemainingDecodedTextureBudget(100, 100) == 0);
     assert(RemainingDecodedTextureBudget(100, 120) == 0);
@@ -46,23 +45,35 @@ int main() {
     assert(budget.Decoded==96*MiB && budget.Uploaded==192*MiB);
     budget=SelectAndroidTextureBudgets(64*GiB,UINT64_MAX);
     assert(budget.Decoded+budget.Uploaded==4*GiB);
-    std::map<int, Entry> cache{{1,{40,1,false}}, {2,{40,3,true}}, {3,{40,2,false}}};
-    std::vector<int> retired;
+
     auto cost=[](const auto& e){return e.second.bytes;};
     auto age=[](const auto& e){return e.second.last;};
     auto eligible=[](const auto& e){return !e.second.pinned;};
+    std::vector<int> retired;
     auto retire=[&](const auto& e){retired.push_back(e.first);};
-    assert(TrimTextureCache(cache,80,cost,age,eligible,retire)==80);
-    assert((retired==std::vector<int>{1}) && cache.contains(2));
-    assert(TrimTextureCache(cache,0,cost,age,eligible,retire)==40);
-    assert((retired==std::vector<int>{1,3}) && cache.contains(2));
-    cache.at(2).pinned=false;
-    assert(TrimTextureCache(cache,0,cost,age,eligible,retire)==0 && cache.empty());
+    std::map<int, Entry> materials{{1,{40,1,false}}, {2,{40,2,false}}};
+    std::map<int, Entry> replacements{{3,{40,3,false}}, {4,{40,4,false}}};
+    const auto shared=TrimSharedTextureCaches(materials,replacements,100,cost,cost,age,eligible,retire);
+    assert(shared.first==40 && shared.second==40);
+    assert(shared.first+shared.second<=100);
+    assert(materials.size()==1 && replacements.size()==1);
+    assert((retired==std::vector<int>{1,3}));
+
+    // Protected entries may exceed the shared budget, but the other cache
+    // must not grow while that over-budget entry remains pinned.
+    std::map<int, Entry> protectedMaterials{{5,{120,1,true}}};
+    std::map<int, Entry> sceneReplacements{{6,{40,2,false}}};
+    const auto protectedResult=TrimSharedTextureCaches(
+        protectedMaterials,sceneReplacements,100,cost,cost,age,eligible,retire);
+    assert(protectedResult.first==120 && protectedResult.second==0);
+    assert(protectedResult.first+protectedResult.second==120);
+    assert(sceneReplacements.empty());
+
     assert(FitsTextureBudget(80,20,100));
     assert(!FitsTextureBudget(80,21,100));
     assert(!FitsTextureBudget(UINT64_MAX,1,100));
     assert(!FitsTextureBudget(0,101,100));
-    assert(TrimTextureCache(cache,100,cost,age,eligible,retire)==0);
+    assert(TrimTextureCache(materials,100,cost,age,eligible,retire)==40);
     struct Texture { uint32_t Width, Height; bool CustomReplacementApplied; uint64_t CustomReplacementHash=0; };
     struct Frame { std::vector<Texture> RetiredTextures; };
     std::map<int,Texture> images{{1,{4,4,true}}, {2,{8,8,false}}};
@@ -83,7 +94,7 @@ int main() {
     PublishInterfaceTextureHashes(std::vector<Alias>{{123}});
     assert(IsInterfaceTexture(123) && !IsInterfaceTexture(456));
     // Scene uploads leave room for the 4K interface atlas; it still obeys the total cap.
-    images={{1,{8192,6144,true,456}}}; // 192 MiB of scene replacements.
+    images={{1,{8192,6144,true,456}}};
     frames.clear();
     assert(!FitsReplacementBudget(images,frames,4,456));
     assert(FitsReplacementBudget(images,frames,64ULL*1024*1024,123));
