@@ -1,10 +1,10 @@
     private File retunedPerformanceProfile(File source) throws Exception {
         File directory = new File(getFilesDir(), "diagnostics");
         if (!directory.isDirectory() && !directory.mkdirs())
-            throw new IOException("Cannot create private diagnostics directory");
+            throw new java.io.IOException("Cannot create private diagnostics directory");
         File summary = new File(directory, "native-runtime-summary.json");
         if (summary.exists() && !summary.delete())
-            throw new IOException("Cannot clear previous performance summary");
+            throw new java.io.IOException("Cannot clear previous performance summary");
         JSONObject profile = new JSONObject(new String(Files.readAllBytes(source.toPath()), StandardCharsets.UTF_8));
         org.json.JSONArray original = profile.getJSONArray("arguments");
         org.json.JSONArray arguments = new org.json.JSONArray();
