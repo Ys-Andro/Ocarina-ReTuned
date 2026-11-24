@@ -29,7 +29,8 @@ def stage(engine, build, ndk, output):
         raise ValueError('Staging NDK must match the native build toolchain.')
     llvm = ndk / 'toolchains/llvm/prebuilt' / ('darwin-x86_64' if sys.platform == 'darwin' else 'linux-x86_64')
     sources = {
-        'libSDL2.so': build / '_deps/sdl2-build/libSDL2.so',
+        # SDL is built explicitly with the same Android NDK by the host workflow.
+        'libSDL2.so': build / 'sdl2/libSDL2.so',
         'libTriAevum.so': build / 'product/libTriAevum.so',
         'libtriaevum_title_bootstrap.so': build / 'product/libtriaevum_title_bootstrap.so',
         'libc++_shared.so': llvm / 'sysroot/usr/lib/aarch64-linux-android/libc++_shared.so',
