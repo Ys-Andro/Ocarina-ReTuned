@@ -11,11 +11,16 @@ profiling during ordinary gameplay.
 4. Exit the game normally so the native runtime can write its summary.
 5. Reopen **Startup diagnostics** and copy the report.
 
-The capture is opt-in and one-run. It enables the runtime's existing
-`TRIAEVUM_PACING_TRACE` sampling and writes the summary to the app-private
-`files/diagnostics/native-runtime-summary.json` location. The original launch
-profile is not modified; a private copy is used for the captured session.
-The previous summary is removed when a new capture starts.
+The capture is opt-in and one-run. It enables the runtime's existing `TRIAEVUM_PACING_TRACE` sampling and the Vulkan
+diagnostics recorder. The host timing summary and a rolling trace of the last
+240 Vulkan frames are written under the app-private
+`files/diagnostics/` directory. The Vulkan trace includes CPU frame intervals,
+GPU timestamp measurements when supported, native PICA GPU pass timings and
+NRI pipeline-creation counters. The original launch profile is not modified;
+a private copy in the same directory is used for the captured session. Previous
+trace files are removed when a new capture starts. The GPU recorder keeps its
+history in memory and writes on normal shutdown, avoiding per-frame JSON disk
+writes during gameplay.
 
 If Android force-stops the app or the process crashes before normal runtime
 shutdown, the summary may not be written. A new app process clears an unconsumed
@@ -32,6 +37,9 @@ capture request, so a failed attempt does not silently enable profiling forever.
 - **Retained slow-frame phase samples** expose the individual host/renderer
   phases for frames that the runtime selected as slow. Some phases are nested
   or overlap, so do not add them as if they were independent costs.
+- **GPU frame p50/p95 and native PICA GPU pass timings** come from Vulkan
+  timestamp queries. Some drivers or paths may not expose usable timestamps;
+  missing measurements are reported as unavailable, never as zero.
 - These host timings do not prove that guest simulation is running at the same
   rate, nor do they directly measure GPU execution time.
 
