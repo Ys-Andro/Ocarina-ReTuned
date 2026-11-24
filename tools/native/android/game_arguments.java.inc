@@ -21,7 +21,7 @@
         arguments.put("--output");
         arguments.put(summary.getAbsolutePath());
         profile.put("arguments", arguments);
-        File diagnosticProfile = new File(directory, "native-launch-profile.json");
+        File diagnosticProfile = new File(source.getParentFile(), "native-launch-diagnostics.json");
         Files.write(diagnosticProfile.toPath(), profile.toString().getBytes(StandardCharsets.UTF_8));
         return diagnosticProfile;
     }
