@@ -233,9 +233,6 @@ tasks.named("preBuild") { dependsOn("stampPreparationIdentity") }
             '    public boolean retunedDriverNeedsRestart(){return GraphicsDriver.needsRestart(this);}\n'
             '    public void retunedRestartForDriver(){runOnUiThread(()->GraphicsDriver.restart(this));}\n'
             '    @Override public void loadLibraries() {')
-    if 'capture_next_run' not in text:
-        text = text.replace('    @Override public void loadLibraries() {',
-            '    @Override public void loadLibraries() {\n        if(StartupDiagnostics.prefs(this).getBoolean("capture_next_run",false)){StartupDiagnostics.prefs(this).edit().putBoolean("capture_next_run",false).putBoolean("capture_active",true).commit();try{android.system.Os.setenv("TRIAEVUM_PACING_TRACE","1",true);android.system.Os.setenv("OOT3D_VULKAN_DIAGNOSTICS_PATH",new File(getFilesDir(),"diagnostics/vulkan-frame-trace.json").getAbsolutePath(),true);android.system.Os.setenv("OOT3D_VULKAN_DIAGNOSTICS_MAX_FRAMES","240",true);android.system.Os.setenv("OOT3D_VULKAN_DIAGNOSTICS_FLUSH_INTERVAL","0",true);}catch(Exception error){StartupDiagnostics.failure(this,error);}}')
     if 'GraphicsDriver.load(this' not in text:
         text = text.replace('    @Override public void loadLibraries() {',
             '    @Override public void loadLibraries() {\n        try { GraphicsDriver.load(this,GraphicsDriver.read(this)); android.system.Os.setenv("SDL_VULKAN_LIBRARY",getApplicationInfo().nativeLibraryDir+"/libretuned_vulkan.so",true); }\n        catch(Exception | LinkageError error){StartupDiagnostics.failure(this,error);throw new IllegalStateException("Graphics driver initialization failed",error);}')
