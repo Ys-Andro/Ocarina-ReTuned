@@ -6,6 +6,12 @@
 struct Entry { uint64_t bytes, last; bool pinned; };
 int main() {
     using namespace RetunedFrontend;
+    // Both decoded caches share one platform budget. The replacement cache
+    // receives only what remains after material textures have been retained.
+    assert(RemainingDecodedTextureBudget(100, 40) == 60);
+    assert(RemainingDecodedTextureBudget(100, 100) == 0);
+    assert(RemainingDecodedTextureBudget(100, 120) == 0);
+    assert(RemainingDecodedTextureBudget(0, 0) == 0);
     auto desktop=SelectDesktopTextureBudgets(16*GiB,8*GiB);
     assert(desktop.Decoded==GiB && desktop.Uploaded==GiB);
     desktop=SelectDesktopTextureBudgets(64*GiB,32*GiB);
@@ -57,7 +63,7 @@ int main() {
     assert(!FitsTextureBudget(UINT64_MAX,1,100));
     assert(!FitsTextureBudget(0,101,100));
     assert(TrimTextureCache(cache,100,cost,age,eligible,retire)==0);
-    struct Texture { uint32_t Width, Height; bool CustomReplacementApplied; uint64_t CustomReplacementHash=0; };
+    struct Texture { uint32_t Width, Height; bool CustomReplacementApplied; uint64_t CustomReplacementHash=0; } ;
     struct Frame { std::vector<Texture> RetiredTextures; };
     std::map<int,Texture> images{{1,{4,4,true}}, {2,{8,8,false}}};
     std::vector<Frame> frames{{{{4,4,true}}}};
