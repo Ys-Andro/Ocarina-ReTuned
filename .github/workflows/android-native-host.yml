@@ -1,6 +1,14 @@
 name: Android native host
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/native/**'
+      - 'tools/reframed/**'
+      - 'tools/frontend/**'
+      - 'tests/**'
+      - '.github/workflows/android-native-host.yml'
 permissions:
   contents: read
 concurrency:
@@ -108,7 +116,7 @@ jobs:
           name: Ocarina-ReTuned-Native-Android-arm64-${{ github.sha }}
           path: artifacts/Ocarina-ReTuned-Native-Android-arm64.tar.gz
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
       - uses: actions/cache/save@v5
         if: always() && steps.native_cache.outputs.cache-hit != 'true'
         with:
