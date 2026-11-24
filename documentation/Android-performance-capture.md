@@ -27,9 +27,11 @@ capture request, so a failed attempt does not silently enable profiling forever.
   help reveal stutter that an average FPS value can hide.
 - **Over 60 Hz / 30 Hz budget** counts sampled intervals that missed those
   frame-time budgets.
-- **PICA backend, present and pacing-wait totals** are accumulated runtime
-  phase timings. They are not GPU timestamp queries and should not be treated
-  as independent additive costs where phases overlap.
+- **Pre-backend work per measured frame** is a CPU/host-side timing scope
+  reported as mean, p95 and maximum milliseconds. It is not a GPU measurement.
+- **Retained slow-frame phase samples** expose the individual host/renderer
+  phases for frames that the runtime selected as slow. Some phases are nested
+  or overlap, so do not add them as if they were independent costs.
 - These host timings do not prove that guest simulation is running at the same
   rate, nor do they directly measure GPU execution time.
 
