@@ -5,7 +5,7 @@ profiling during ordinary gameplay.
 
 ## Capture a session
 
-1. Open **Startup diagnostics** from the launcher.
+1. Open the ROM setup screen and select **Startup diagnostics** (it is also available from the startup recovery screen).
 2. Select **Capture performance on next run**.
 3. Play the same scene and settings you want to measure.
 4. Exit the game normally so the native runtime can write its summary.
