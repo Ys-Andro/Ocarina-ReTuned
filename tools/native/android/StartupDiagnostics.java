@@ -202,12 +202,61 @@ public final class StartupDiagnostics extends Application {
             if (!pica.isEmpty())
                 out.append("\nNative PICA GPU pass ms: p50 ").append(percentile(pica, 0.50))
                     .append("; p95 ").append(percentile(pica, 0.95));
+
+            // These are independent GPU pass timestamps from the pinned TriAevum trace schema.
+            // Keep each distribution separate: overlapping/nested passes must not be summed.
+            String[][] passMetrics = {
+                {"toon_raster_ms", "Toon raster"},
+                {"grass_ms", "Grass"},
+                {"ambient_occlusion_ms", "Ambient occlusion"},
+                {"depth_preparation_ms", "Depth preparation"},
+                {"reflection_ms", "Reflection"},
+                {"global_illumination_ms", "Global illumination"},
+                {"motion_vectors_ms", "Motion vectors"},
+                {"scene_composite_ms", "Scene composite"},
+                {"anti_aliasing_ms", "Anti-aliasing"},
+                {"upscaler_ms", "Upscaler"},
+                {"display_transfer_ms", "Display transfer"},
+                {"scanout_ms", "Scanout"},
+                {"overlay_ms", "Overlay"}
+            };
+            for (String[] metric : passMetrics) {
+                java.util.ArrayList<Double> samples = new java.util.ArrayList<>();
+                if (frames != null) for (int i = 0; i < frames.length(); ++i) {
+                    org.json.JSONObject frame = frames.optJSONObject(i);
+                    org.json.JSONObject gpuFrame = frame == null ? null : frame.optJSONObject("gpu");
+                    if (gpuFrame == null) continue;
+                    double value = gpuFrame.optDouble(metric[0], -1);
+                    if (Double.isFinite(value) && value > 0) samples.add(value);
+                }
+                if (!samples.isEmpty()) {
+                    java.util.Collections.sort(samples);
+                    out.append("\nGPU ").append(metric[1]).append(" ms: p50 ")
+                        .append(percentile(samples, 0.50)).append("; p95 ")
+                        .append(percentile(samples, 0.95)).append("; samples ")
+                        .append(samples.size());
+                }
+            }
+
+            if (frames != null && frames.length() > 0) {
+                org.json.JSONObject first = frames.optJSONObject(0);
+                if (first != null)
+                    out.append("\nVulkan adapter vendor/device IDs: 0x")
+                        .append(Integer.toHexString(first.optInt("vulkan_adapter_vendor_id", 0)))
+                        .append("/0x")
+                        .append(Integer.toHexString(first.optInt("vulkan_adapter_device_id", 0)))
+                        .append("; adapter index ")
+                        .append(first.optInt("vulkan_adapter_index", -1));
+            }
             org.json.JSONObject pipelines = root.optJSONObject("nri_pipeline_compilation");
             if (pipelines != null)
                 out.append("\nNRI pipeline creations: ").append(pipelines.optLong("created", 0))
                     .append(" / ").append(pipelines.optLong("creation_attempts", 0))
-                    .append("; initial cache bytes ").append(pipelines.optLong("initial_cache_bytes", 0));
-            out.append("\nGPU timings use Vulkan timestamp queries when supported; missing values are unavailable, not zero.");
+                    .append("; initial cache bytes ").append(pipelines.optLong("initial_cache_bytes", 0))
+                    .append("; pipeline creation time ms ")
+                    .append(pipelines.optLong("creation_nanoseconds", 0) / 1000000.0);
+            out.append("\nGPU timings use Vulkan timestamp queries when supported; missing values are unavailable, not zero.")
+                .append("\nGPU pass timings are reported independently and may overlap; do not add them together.");
         } catch (Exception ignored) {
             out.append("\nVulkan GPU trace: summary could not be read.");
         }
