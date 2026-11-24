@@ -6,8 +6,8 @@
         if (summary.exists() && !summary.delete())
             throw new IOException("Cannot clear previous performance summary");
         JSONObject profile = new JSONObject(new String(Files.readAllBytes(source.toPath()), StandardCharsets.UTF_8));
-        JSONArray original = profile.getJSONArray("arguments");
-        JSONArray arguments = new JSONArray();
+        org.json.JSONArray original = profile.getJSONArray("arguments");
+        org.json.JSONArray arguments = new org.json.JSONArray();
         for (int index = 0; index < original.length(); ++index) {
             String argument = original.getString(index);
             if ("--output".equals(argument)) {
