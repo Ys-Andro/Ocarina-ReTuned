@@ -174,14 +174,17 @@ public final class StartupDiagnostics extends Application {
                     .append("; over 60 Hz budget: ").append(times.optLong("over_60hz_budget", -1))
                     .append("; over 30 Hz budget: ").append(times.optLong("over_30hz_budget", -1));
             }
-            org.json.JSONObject phases = root.optJSONObject("phase_timing");
-            if (phases != null) {
-                out.append("\nMeasured phase totals seconds (not GPU timestamp queries):")
-                    .append("\nPICA backend: ").append(phases.optDouble("pica_backend_seconds", -1))
-                    .append("; present: ").append(phases.optDouble("present_seconds", -1))
-                    .append("; pacing wait: ").append(phases.optDouble("pacing_wait_seconds", -1));
+            org.json.JSONObject preBackend = benchmark == null ? null : benchmark.optJSONObject("pre_backend_cpu");
+            if (preBackend != null) {
+                out.append("\nPre-backend work per measured frame ms: mean ")
+                    .append(preBackend.optDouble("mean_ms", -1))
+                    .append("; p95 upper ").append(preBackend.optDouble("p95_upper_ms", -1))
+                    .append("; maximum ").append(preBackend.optDouble("maximum_ms", -1));
             }
-            out.append("\nFrame-time values describe host frame intervals; they do not by themselves prove guest simulation rate or GPU execution time.");
+            org.json.JSONObject phases = root.optJSONObject("phase_timing");
+            org.json.JSONArray slowFrames = phases == null ? null : phases.optJSONArray("slow_frames");
+            out.append("\nRetained slow-frame phase samples: ").append(slowFrames == null ? 0 : slowFrames.length());
+            out.append("\nFrame-time values describe host frame intervals. Pre-backend work is CPU/host-side timing, not GPU execution time; neither metric alone proves guest simulation rate.");
         } catch (Exception ignored) {
             out.append("\nPerformance capture: summary could not be read.");
         }
