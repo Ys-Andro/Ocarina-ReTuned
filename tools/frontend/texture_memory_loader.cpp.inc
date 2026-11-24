@@ -28,12 +28,8 @@
             mRetunedEvictedTextures.insert(entry.first);
         };
         mRetunedTextureUse[protectedHash] = ++mRetunedTextureClock;
-        const auto decodedBudget = RetunedFrontend::DecodedTextureBudget();
-        const auto materials = RetunedFrontend::TrimTextureCache(mMaterialCache,
-            decodedBudget / 2, materialBytes, age, eligible, retire);
-        const auto replacementBudget =
-            RetunedFrontend::RemainingDecodedTextureBudget(decodedBudget, materials);
-        const auto replacements = RetunedFrontend::TrimTextureCache(mReplacementCache,
-            replacementBudget, replacementBytes, age, eligible, retire);
+        const auto [materials, replacements] = RetunedFrontend::TrimSharedTextureCaches(
+            mMaterialCache, mReplacementCache, RetunedFrontend::DecodedTextureBudget(),
+            materialBytes, replacementBytes, age, eligible, retire);
         RetunedFrontend::DecodedTextureBytes.store(materials + replacements);
     }
