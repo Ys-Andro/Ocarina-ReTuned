@@ -95,7 +95,8 @@ public final class StartupDiagnostics extends Application {
         if (!failure.isEmpty() && p.getLong("java_session", -1) == previous)
             failure += "\n" + p.getString("java_failure", "");
         android.content.SharedPreferences.Editor edit = p.edit().putLong("session", System.currentTimeMillis())
-            .remove("active_driver").remove("native_stage").remove("native_history").remove("runtime_vulkan").remove("vulkan_candidates");
+            .remove("active_driver").remove("native_stage").remove("native_history").remove("runtime_vulkan").remove("vulkan_candidates")
+            .remove("capture_active").remove("capture_next_run");
         if (!failure.isEmpty()) edit.putString("failure", failure).putBoolean("pending", true);
         edit.commit();
         Thread.UncaughtExceptionHandler previousHandler = Thread.getDefaultUncaughtExceptionHandler();
@@ -145,8 +146,45 @@ public final class StartupDiagnostics extends Application {
             .append("\nRuntime Vulkan: ").append(prefs(c).getString("runtime_vulkan", "not captured"))
             .append("\nVulkan candidates:\n").append(prefs(c).getString("vulkan_candidates", "not captured"))
             .append("\nPrevious failure: ").append(prefs(c).getString("failure", "No failure captured. Android 10 cannot report prior native exit reasons."));
+        appendPerformance(out, c);
         appendPreparation(out, c);
         return out.toString();
+    }
+
+    private static void appendPerformance(StringBuilder out, Context context) {
+        java.io.File file = new java.io.File(context.getFilesDir(), "diagnostics/native-runtime-summary.json");
+        if (!file.isFile() || file.length() <= 0 || file.length() > 2 * 1024 * 1024) {
+            out.append("\nPerformance capture: no completed capture is available. Use the one-run capture action to collect frame-time data.");
+            return;
+        }
+        try {
+            org.json.JSONObject root = new org.json.JSONObject(new String(
+                java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8));
+            org.json.JSONObject benchmark = root.optJSONObject("benchmark_window");
+            org.json.JSONObject times = benchmark == null ? null : benchmark.optJSONObject("frame_times");
+            out.append("\nPerformance capture (last completed session):");
+            if (times == null) {
+                out.append("\nFrame-time samples: unavailable");
+            } else {
+                out.append("\nFrame-time samples: ").append(times.optLong("samples", 0))
+                    .append("; p50 upper ms: ").append(times.optDouble("p50_upper_ms", -1))
+                    .append("; p95 upper ms: ").append(times.optDouble("p95_upper_ms", -1))
+                    .append("; p99 upper ms: ").append(times.optDouble("p99_upper_ms", -1))
+                    .append("; mean ms: ").append(times.optDouble("mean_ms", -1))
+                    .append("; over 60 Hz budget: ").append(times.optLong("over_60hz_budget", -1))
+                    .append("; over 30 Hz budget: ").append(times.optLong("over_30hz_budget", -1));
+            }
+            org.json.JSONObject phases = root.optJSONObject("phase_timing");
+            if (phases != null) {
+                out.append("\nMeasured phase totals seconds (not GPU timestamp queries):")
+                    .append("\nPICA backend: ").append(phases.optDouble("pica_backend_seconds", -1))
+                    .append("; present: ").append(phases.optDouble("present_seconds", -1))
+                    .append("; pacing wait: ").append(phases.optDouble("pacing_wait_seconds", -1));
+            }
+            out.append("\nFrame-time values describe host frame intervals; they do not by themselves prove guest simulation rate or GPU execution time.");
+        } catch (Exception ignored) {
+            out.append("\nPerformance capture: summary could not be read.");
+        }
     }
 
     private static void appendPreparation(StringBuilder out, Context context) {
