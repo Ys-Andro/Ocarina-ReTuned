@@ -68,6 +68,12 @@ int main() {
     assert(protectedResult.first==120 && protectedResult.second==0);
     assert(protectedResult.first+protectedResult.second==120);
     assert(sceneReplacements.empty());
+    std::map<int, Entry> pinnedMaterials{{7,{120,1,true}}};
+    std::map<int, Entry> pinnedReplacements{{8,{80,2,true}}};
+    const auto bothPinned=TrimSharedTextureCaches(
+        pinnedMaterials,pinnedReplacements,100,cost,cost,age,eligible,retire);
+    assert(bothPinned.first==120 && bothPinned.second==80);
+    assert(bothPinned.first+bothPinned.second==200);
 
     assert(FitsTextureBudget(80,20,100));
     assert(!FitsTextureBudget(80,21,100));
