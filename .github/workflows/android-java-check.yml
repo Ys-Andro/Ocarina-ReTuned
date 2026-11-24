@@ -57,7 +57,14 @@ jobs:
           python tools/native/prepare_android_app.py engine
           python tools/native/android/apply_dual_screen_probe.py engine
           PYTHONPATH=tools/native:tools/reframed:tools/frontend python -c 'from pathlib import Path; from apply_mobile_frontend import apply; apply(Path("engine"))'
+      - name: Prepare compile-only native stage
+        run: |
+          mkdir -p stage/arm64-v8a
+          for name in SDL2 TriAevum triaevum_title_bootstrap triaevum_title_aot c++_shared; do
+            touch "stage/arm64-v8a/lib${name}.so"
+          done
       - name: Compile Android Java sources
         run: |
           gradle -p engine/ports/android :app:compileReleaseJavaWithJavac \
-            -PtriaevumSdlSource="$GITHUB_WORKSPACE/sdl"
+            -PtriaevumSdlSource="$GITHUB_WORKSPACE/sdl" \
+            -PtriaevumNativeStage="$GITHUB_WORKSPACE/stage"
