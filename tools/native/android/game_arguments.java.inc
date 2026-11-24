@@ -5,6 +5,9 @@
         File summary = new File(directory, "native-runtime-summary.json");
         if (summary.exists() && !summary.delete())
             throw new java.io.IOException("Cannot clear previous performance summary");
+        File vulkanTrace = new File(directory, "vulkan-frame-trace.json");
+        if (vulkanTrace.exists() && !vulkanTrace.delete())
+            throw new java.io.IOException("Cannot clear previous Vulkan frame trace");
         JSONObject profile = new JSONObject(new String(Files.readAllBytes(source.toPath()), StandardCharsets.UTF_8));
         org.json.JSONArray original = profile.getJSONArray("arguments");
         org.json.JSONArray arguments = new org.json.JSONArray();
