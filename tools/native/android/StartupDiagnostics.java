@@ -151,43 +151,106 @@ public final class StartupDiagnostics extends Application {
         return out.toString();
     }
 
-    private static void appendPerformance(StringBuilder out, Context context) {
-        java.io.File file = new java.io.File(context.getFilesDir(), "diagnostics/native-runtime-summary.json");
-        if (!file.isFile() || file.length() <= 0 || file.length() > 2 * 1024 * 1024) {
-            out.append("\nPerformance capture: no completed capture is available. Use the one-run capture action to collect frame-time data.");
+    private static double percentile(java.util.List<Double> sorted, double quantile) {
+        if (sorted.isEmpty()) return -1;
+        int index = Math.max(0, Math.min(sorted.size() - 1, (int)Math.ceil(quantile * sorted.size()) - 1));
+        return sorted.get(index);
+    }
+
+    private static void appendVulkanFrameTrace(StringBuilder out, Context context) {
+        java.io.File file = new java.io.File(context.getFilesDir(), "diagnostics/vulkan-frame-trace.json");
+        if (!file.isFile() || file.length() <= 0 || file.length() > 16 * 1024 * 1024) {
+            out.append("\nVulkan GPU trace: no completed trace is available.");
             return;
         }
         try {
             org.json.JSONObject root = new org.json.JSONObject(new String(
                 java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8));
-            org.json.JSONObject benchmark = root.optJSONObject("benchmark_window");
-            org.json.JSONObject times = benchmark == null ? null : benchmark.optJSONObject("frame_times");
-            out.append("\nPerformance capture (last completed session):");
-            if (times == null) {
-                out.append("\nFrame-time samples: unavailable");
-            } else {
-                out.append("\nFrame-time samples: ").append(times.optLong("samples", 0))
-                    .append("; p50 upper ms: ").append(times.optDouble("p50_upper_ms", -1))
-                    .append("; p95 upper ms: ").append(times.optDouble("p95_upper_ms", -1))
-                    .append("; p99 upper ms: ").append(times.optDouble("p99_upper_ms", -1))
-                    .append("; mean ms: ").append(times.optDouble("mean_ms", -1))
-                    .append("; over 60 Hz budget: ").append(times.optLong("over_60hz_budget", -1))
-                    .append("; over 30 Hz budget: ").append(times.optLong("over_30hz_budget", -1));
+            if (!"oot3d_vulkan_diagnostics_v1".equals(root.optString("format"))) {
+                out.append("\nVulkan GPU trace: unsupported format.");
+                return;
             }
-            org.json.JSONObject preBackend = benchmark == null ? null : benchmark.optJSONObject("pre_backend_cpu");
-            if (preBackend != null) {
-                out.append("\nPre-backend work per measured frame ms: mean ")
-                    .append(preBackend.optDouble("mean_ms", -1))
-                    .append("; p95 upper ").append(preBackend.optDouble("p95_upper_ms", -1))
-                    .append("; maximum ").append(preBackend.optDouble("maximum_ms", -1));
+            org.json.JSONArray frames = root.optJSONArray("frames");
+            java.util.ArrayList<Double> cpu = new java.util.ArrayList<>();
+            java.util.ArrayList<Double> gpu = new java.util.ArrayList<>();
+            java.util.ArrayList<Double> pica = new java.util.ArrayList<>();
+            if (frames != null) for (int i = 0; i < frames.length(); ++i) {
+                org.json.JSONObject frame = frames.optJSONObject(i);
+                if (frame == null) continue;
+                double cpuMs = frame.optDouble("cpu_frame_ms", -1);
+                if (Double.isFinite(cpuMs) && cpuMs > 0) cpu.add(cpuMs);
+                org.json.JSONObject gpuFrame = frame.optJSONObject("gpu");
+                if (gpuFrame == null) continue;
+                double gpuMs = gpuFrame.optDouble("frame_ms", -1);
+                if (Double.isFinite(gpuMs) && gpuMs > 0) gpu.add(gpuMs);
+                double picaMs = gpuFrame.optDouble("native_pica_ms", -1);
+                if (Double.isFinite(picaMs) && picaMs > 0) pica.add(picaMs);
             }
-            org.json.JSONObject phases = root.optJSONObject("phase_timing");
-            org.json.JSONArray slowFrames = phases == null ? null : phases.optJSONArray("slow_frames");
-            out.append("\nRetained slow-frame phase samples: ").append(slowFrames == null ? 0 : slowFrames.length());
-            out.append("\nFrame-time values describe host frame intervals. Pre-backend work is CPU/host-side timing, not GPU execution time; neither metric alone proves guest simulation rate.");
+            java.util.Collections.sort(cpu);
+            java.util.Collections.sort(gpu);
+            java.util.Collections.sort(pica);
+            out.append("\nVulkan trace retained frames: ").append(frames == null ? 0 : frames.length());
+            if (!cpu.isEmpty())
+                out.append("\nCPU frame ms: p50 ").append(percentile(cpu, 0.50))
+                    .append("; p95 ").append(percentile(cpu, 0.95));
+            if (!gpu.isEmpty())
+                out.append("\nGPU frame ms: p50 ").append(percentile(gpu, 0.50))
+                    .append("; p95 ").append(percentile(gpu, 0.95))
+                    .append("; valid GPU samples ").append(gpu.size());
+            else
+                out.append("\nGPU frame timestamps: unavailable on this driver or renderer path");
+            if (!pica.isEmpty())
+                out.append("\nNative PICA GPU pass ms: p50 ").append(percentile(pica, 0.50))
+                    .append("; p95 ").append(percentile(pica, 0.95));
+            org.json.JSONObject pipelines = root.optJSONObject("nri_pipeline_compilation");
+            if (pipelines != null)
+                out.append("\nNRI pipeline creations: ").append(pipelines.optLong("created", 0))
+                    .append(" / ").append(pipelines.optLong("creation_attempts", 0))
+                    .append("; initial cache bytes ").append(pipelines.optLong("initial_cache_bytes", 0));
+            out.append("\nGPU timings use Vulkan timestamp queries when supported; missing values are unavailable, not zero.");
         } catch (Exception ignored) {
-            out.append("\nPerformance capture: summary could not be read.");
+            out.append("\nVulkan GPU trace: summary could not be read.");
         }
+    }
+
+    private static void appendPerformance(StringBuilder out, Context context) {
+        java.io.File file = new java.io.File(context.getFilesDir(), "diagnostics/native-runtime-summary.json");
+        if (!file.isFile() || file.length() <= 0 || file.length() > 2 * 1024 * 1024) {
+            out.append("\nPerformance capture: no completed host timing summary is available.");
+        } else {
+            try {
+                org.json.JSONObject root = new org.json.JSONObject(new String(
+                    java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8));
+                org.json.JSONObject benchmark = root.optJSONObject("benchmark_window");
+                org.json.JSONObject times = benchmark == null ? null : benchmark.optJSONObject("frame_times");
+                out.append("\nHost performance capture (last completed session):");
+                if (times == null) {
+                    out.append("\nFrame-time samples: unavailable");
+                } else {
+                    out.append("\nFrame-time samples: ").append(times.optLong("samples", 0))
+                        .append("; p50 upper ms: ").append(times.optDouble("p50_upper_ms", -1))
+                        .append("; p95 upper ms: ").append(times.optDouble("p95_upper_ms", -1))
+                        .append("; p99 upper ms: ").append(times.optDouble("p99_upper_ms", -1))
+                        .append("; mean ms: ").append(times.optDouble("mean_ms", -1))
+                        .append("; over 60 Hz budget: ").append(times.optLong("over_60hz_budget", -1))
+                        .append("; over 30 Hz budget: ").append(times.optLong("over_30hz_budget", -1));
+                }
+                org.json.JSONObject preBackend = benchmark == null ? null : benchmark.optJSONObject("pre_backend_cpu");
+                if (preBackend != null) {
+                    out.append("\nPre-backend work per measured frame ms: mean ")
+                        .append(preBackend.optDouble("mean_ms", -1))
+                        .append("; p95 upper ").append(preBackend.optDouble("p95_upper_ms", -1))
+                        .append("; maximum ").append(preBackend.optDouble("maximum_ms", -1));
+                }
+                org.json.JSONObject phases = root.optJSONObject("phase_timing");
+                org.json.JSONArray slowFrames = phases == null ? null : phases.optJSONArray("slow_frames");
+                out.append("\nRetained slow-frame phase samples: ").append(slowFrames == null ? 0 : slowFrames.length());
+                out.append("\nHost frame intervals do not by themselves prove guest simulation rate or GPU execution time.");
+            } catch (Exception ignored) {
+                out.append("\nPerformance capture: host summary could not be read.");
+            }
+        }
+        appendVulkanFrameTrace(out, context);
     }
 
     private static void appendPreparation(StringBuilder out, Context context) {
