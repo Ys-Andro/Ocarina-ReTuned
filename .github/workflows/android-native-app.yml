@@ -26,6 +26,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HOST_REVISION }}
       - uses: actions/checkout@v6
         with:
           repository: coccofresco/TriAevum
@@ -90,6 +92,6 @@ jobs:
           PY
       - uses: actions/upload-artifact@v7
         with:
-          name: Ocarina-ReTuned-Native-Android-APK-${{ github.sha }}
+          name: Ocarina-ReTuned-Native-Android-APK-${{ env.HOST_REVISION }}
           path: artifacts/*.apk
           if-no-files-found: error
