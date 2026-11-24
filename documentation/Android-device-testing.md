@@ -11,6 +11,8 @@ The APK is an installable development build for ARM64 devices. It is not a Play 
 
 Current Android requirements are API 29 or newer and Vulkan 1.2. A device that does not expose the required Vulkan 1.2 capabilities is not qualified by this build.
 
+**Known device caveat:** Qualcomm's published Snapdragon 685 specification lists Vulkan 1.1 for its Adreno 610 GPU. If testing on a Snapdragon 685 device, the APK can still be used to check installation and any UI/setup paths that run before Vulkan initialization, but do not expect the renderer to start unless that device's installed driver actually reports Vulkan 1.2 and satisfies the required features. A Vulkan 1.1 report is a compatibility limitation, not a reason to force-enable unsupported features. See [Qualcomm's Snapdragon 685 specification](https://www.qualcomm.com/smartphones/products/6-series/snapdragon-685-4g-mobile-platform).
+
 ## Download and install
 
 1. Open the successful **Android native app prototype** run from the repository's Actions tab.
