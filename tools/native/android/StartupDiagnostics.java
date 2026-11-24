@@ -203,6 +203,43 @@ public final class StartupDiagnostics extends Application {
                 out.append("\nNative PICA GPU pass ms: p50 ").append(percentile(pica, 0.50))
                     .append("; p95 ").append(percentile(pica, 0.95));
 
+            // Native PICA CPU counters identify host-side renderer work separately from GPU work.
+            String[][] cpuMetrics = {
+                {"total_ms", "PICA CPU total"},
+                {"shader_variant_ms", "PICA shader variant"},
+                {"shader_cache_ms", "PICA shader cache"},
+                {"texture_ms", "PICA texture work"},
+                {"draw_state_ms", "PICA draw state"},
+                {"grass_surface_ms", "PICA grass surface"},
+                {"scene_state_ms", "PICA scene state"},
+                {"render_target_state_ms", "PICA render-target state"},
+                {"directional_shadow_ms", "PICA directional shadow"},
+                {"grass_render_ms", "PICA grass render"},
+                {"reflection_environment_ms", "PICA reflection environment"},
+                {"temporal_state_ms", "PICA temporal state"},
+                {"pipeline_ms", "PICA pipeline work"},
+                {"upload_ms", "PICA upload work"},
+                {"descriptor_ms", "PICA descriptor work"},
+                {"command_ms", "PICA command recording"}
+            };
+            for (String[] metric : cpuMetrics) {
+                java.util.ArrayList<Double> samples = new java.util.ArrayList<>();
+                if (frames != null) for (int i = 0; i < frames.length(); ++i) {
+                    org.json.JSONObject frame = frames.optJSONObject(i);
+                    org.json.JSONObject cpuFrame = frame == null ? null : frame.optJSONObject("native_pica_cpu");
+                    if (cpuFrame == null) continue;
+                    double value = cpuFrame.optDouble(metric[0], -1);
+                    if (Double.isFinite(value) && value > 0) samples.add(value);
+                }
+                if (!samples.isEmpty()) {
+                    java.util.Collections.sort(samples);
+                    out.append("\\n").append(metric[1]).append(" ms: p50 ")
+                        .append(percentile(samples, 0.50)).append("; p95 ")
+                        .append(percentile(samples, 0.95)).append("; samples ")
+                        .append(samples.size());
+                }
+            }
+
             // These are independent GPU pass timestamps from the pinned TriAevum trace schema.
             // Keep each distribution separate: overlapping/nested passes must not be summed.
             String[][] passMetrics = {
