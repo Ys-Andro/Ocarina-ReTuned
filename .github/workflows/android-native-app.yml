@@ -8,13 +8,21 @@ on:
       host_revision:
         description: Exact neutral host revision
         required: true
+  workflow_run:
+    workflows: ["Android native host"]
+    types: [completed]
+    branches: [main]
 permissions:
   contents: read
   actions: read
 jobs:
   package:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     name: Android ARM64 prototype APK
     runs-on: ubuntu-24.04
+    env:
+      HOST_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.host_run || github.event.workflow_run.id }}
+      HOST_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.host_revision || github.event.workflow_run.head_sha }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
@@ -34,8 +42,6 @@ jobs:
       - name: Verify host provenance
         env:
           GH_TOKEN: ${{ github.token }}
-          HOST_RUN: ${{ inputs.host_run }}
-          HOST_REVISION: ${{ inputs.host_revision }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$HOST_RUN" > host-run.json
           python - <<'PY'
@@ -43,14 +49,15 @@ jobs:
           r = json.load(open('host-run.json'))
           assert r['repository']['full_name'] == os.environ['GITHUB_REPOSITORY']
           assert r['head_sha'] == os.environ['HOST_REVISION']
+          assert r['head_branch'] == 'main'
           assert r['conclusion'] == 'success'
           assert r['path'] == '.github/workflows/android-native-host.yml'
           PY
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.host_run }}
-          name: Ocarina-ReTuned-Native-Android-arm64-${{ inputs.host_revision }}
+          run-id: ${{ env.HOST_RUN }}
+          name: Ocarina-ReTuned-Native-Android-arm64-${{ env.HOST_REVISION }}
           path: host
       - name: Prepare neutral APK
         run: |
