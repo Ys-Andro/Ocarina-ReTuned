@@ -93,8 +93,8 @@ jobs:
           with zipfile.ZipFile(p) as z:
               assert not any('title_aot' in n for n in z.namelist()), 'Title code in public APK'
               assert not any(n.lower().endswith(('.cci','.3ds','.cia','.romfs','.zobj','.pak')) for n in z.namelist())
-          import subprocess
-          subprocess.run(['$ANDROID_HOME/build-tools/35.0.0/apksigner', 'verify', '--verbose', p], check=True)
+          import os, subprocess
+          subprocess.run([os.path.join(os.environ['ANDROID_HOME'], 'build-tools', '35.0.0', 'apksigner'), 'verify', '--verbose', p], check=True)
           PY
       - uses: actions/upload-artifact@v7
         with:
