@@ -233,7 +233,7 @@ public final class StartupDiagnostics extends Application {
                 }
                 if (!samples.isEmpty()) {
                     java.util.Collections.sort(samples);
-                    out.append("\\n").append(metric[1]).append(" ms: p50 ")
+                    out.append("\n").append(metric[1]).append(" ms: p50 ")
                         .append(percentile(samples, 0.50)).append("; p95 ")
                         .append(percentile(samples, 0.95)).append("; samples ")
                         .append(samples.size());
