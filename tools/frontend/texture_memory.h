@@ -33,6 +33,13 @@ uint64_t CacheBytes(const Map& cache, Cost cost) {
     return bytes;
 }
 
+// Return the remaining shared decoded-texture budget without unsigned underflow.
+// Pinned/interface entries can keep a cache above its target; in that case the
+// other cache receives no additional allowance until memory pressure subsides.
+inline constexpr uint64_t RemainingDecodedTextureBudget(uint64_t budget, uint64_t used) {
+    return used >= budget ? 0 : budget - used;
+}
+
 // Removal transfers GPU ownership to the renderer's deferred-retirement queue.
 // A protected entry can remain over budget until its current consumer finishes.
 template<class Map, class Cost, class Age, class Eligible, class Retire>
