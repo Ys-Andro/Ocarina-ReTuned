@@ -47,8 +47,16 @@ jobs:
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;29.0.14206865' 'cmake;3.31.6'
-      - name: Generate Android app sources
-        run: python tools/native/prepare_android_app.py engine
+      - name: Apply Android source adapters
+        run: |
+          python tools/native/apply_android_port.py engine
+          python tools/reframed/apply_native_port.py engine
+          python tools/reframed/apply_renderer_port.py engine
+          python tools/native/apply_audio_port.py engine
+          python tools/frontend/apply_frontend_port.py engine
+          python tools/native/prepare_android_app.py engine
+          python tools/native/android/apply_dual_screen_probe.py engine
+          PYTHONPATH=tools/native:tools/reframed:tools/frontend python -c 'from pathlib import Path; from apply_mobile_frontend import apply; apply(Path("engine"))'
       - name: Compile Android Java sources
         run: |
           gradle -p engine/ports/android :app:compileReleaseJavaWithJavac \
