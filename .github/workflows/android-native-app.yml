@@ -76,19 +76,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
-      - name: Package unsigned prototype
+      - name: Install Android SDK components
         run: |
-          gradle -p engine/ports/android :app:assembleRelease \
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Package installable debug prototype
+        run: |
+          gradle -p engine/ports/android :app:assembleDebug \
             -PtriaevumSdlSource="$GITHUB_WORKSPACE/sdl" \
             -PtriaevumNativeStage="$GITHUB_WORKSPACE/stage/Ocarina-ReTuned-Native-Android"
           mkdir -p artifacts
-          cp engine/ports/android/app/build/outputs/apk/release/app-release-unsigned.apk artifacts/Ocarina-ReTuned-Native-Android-arm64-unsigned.apk
+          cp engine/ports/android/app/build/outputs/apk/debug/app-debug.apk artifacts/Ocarina-ReTuned-Native-Android-arm64-debug.apk
           python - <<'PY'
           import zipfile
-          p = 'artifacts/Ocarina-ReTuned-Native-Android-arm64-unsigned.apk'
+          p = 'artifacts/Ocarina-ReTuned-Native-Android-arm64-debug.apk'
           with zipfile.ZipFile(p) as z:
               assert not any('title_aot' in n for n in z.namelist()), 'Title code in public APK'
               assert not any(n.lower().endswith(('.cci','.3ds','.cia','.romfs','.zobj','.pak')) for n in z.namelist())
+          import subprocess
+          subprocess.run(['$ANDROID_HOME/build-tools/35.0.0/apksigner', 'verify', '--verbose', p], check=True)
           PY
       - uses: actions/upload-artifact@v7
         with:
